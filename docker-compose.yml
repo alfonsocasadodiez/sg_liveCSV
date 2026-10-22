@@ -1,0 +1,21 @@
+services:
+  sg-livecsv:
+    build: .
+    image: sg-livecsv:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - sg-livecsv-data:/data
+    environment:
+      # Leave unset to configure via the GUI instead. Anything set here overrides the GUI
+      # and is pinned (read-only) in the configuration page.
+      SG_SERVER_URL: ""
+      SG_SCRIPT_NAME: ""
+      SG_SCRIPT_SECRET: ""
+      SG_INTERVAL_MINUTES: ""
+      # SG_EXPORTS_JSON: '[{"name":"tasks","entity_type":"Task","fields":["content","sg_status_list"],"file_name":"tasks.csv"}]'
+      SG_OUTPUT_DIR: /data/csv
+    restart: unless-stopped
+
+volumes:
+  sg-livecsv-data:

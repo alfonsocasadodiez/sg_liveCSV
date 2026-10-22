@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ShotGrid Live CSV</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="page">
+    <h1>ShotGrid Live CSV</h1>
+
+    <section class="card" id="status-card">
+      <h2>Status</h2>
+      <div id="status"></div>
+      <button id="run-now">Run export now</button>
+    </section>
+
+    <section class="card">
+      <h2>ShotGrid Connection</h2>
+      <p class="hint">A field disabled below is pinned by an environment variable and must be changed there.</p>
+      <label>Server URL or site name
+        <input id="server_url" placeholder="https://yoursite.shotgrid.autodesk.com or yoursite" />
+      </label>
+      <label>Script Name
+        <input id="script_name" />
+      </label>
+      <label>Script Secret
+        <input id="script_secret" type="password" placeholder="(unchanged if left blank)" />
+      </label>
+      <div class="row">
+        <button id="test-connection">Test connection</button>
+        <span id="connection-result"></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Schedule</h2>
+      <label>Interval (minutes)
+        <input id="interval_minutes" type="number" min="1" />
+      </label>
+    </section>
+
+    <section class="card">
+      <h2>Exports</h2>
+      <div id="exports-list"></div>
+
+      <h3>Add export</h3>
+      <label>Entity type
+        <select id="entity-select"><option value="">Load entities first…</option></select>
+        <button id="load-entities" type="button">Load entities</button>
+      </label>
+      <label>Fields
+        <select id="fields-select" multiple size="10"></select>
+      </label>
+      <label>File name
+        <input id="file-name" placeholder="e.g. tasks.csv" />
+      </label>
+      <button id="add-export" type="button">Add export</button>
+    </section>
+
+    <div class="row">
+      <button id="save-config" class="primary">Save configuration</button>
+      <span id="save-result"></span>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
