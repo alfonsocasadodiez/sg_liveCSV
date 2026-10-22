@@ -1,8 +1,59 @@
-# ShotGrid/Flow Production Tracking Live CSV Script
+# ShotGrid/Flow Production Tracking Live CSV
 
-This script fetches data from ShotGrid/Flow Production Tracking and exports it into CSV files, one per entity type (Task and Version as created, modify it to your liking :)). It can be set to run at a specified interval, automatically updating the CSV files, then exposed via a Nginx web server. 
+This project fetches data from ShotGrid/Flow Production Tracking and exports it into CSV files on a schedule.
 
-## Prerequisites
+Two ways to run it:
+
+- **Docker app with a GUI** (recommended) — configure the ShotGrid connection, pick entities/fields straight from your ShotGrid schema, and set the export schedule from a web UI. See [Docker / GUI setup](#docker--gui-setup) below.
+- **Standalone script** (`livecsv.py`) — the original minimal script, hand-edited and cron'd. See [Standalone script](#standalone-script) below.
+
+## Docker / GUI setup
+
+### Run it
+
+```bash
+docker compose up -d --build
+```
+
+Then open `http://localhost:8080`. From there you can:
+
+- Enter your ShotGrid server URL (or just the site name, e.g. `mystudio`), script name and script secret, and test the connection.
+- Browse your ShotGrid schema: pick an entity type and the fields to export, straight from ShotGrid (no need to know field names up front).
+- Add as many exports as you like (e.g. Tasks, Versions, Shots), each writing its own CSV file.
+- Set the refresh interval and trigger an export immediately.
+
+Each configured export is written to `/data/csv/<file_name>.csv` inside the container (a named Docker volume by default) and served at `http://localhost:8080/csv/<file_name>.csv`.
+
+### Configuring via environment variables
+
+Every setting can also be pinned with an environment variable, which overrides whatever is stored from the GUI and is shown there as read-only. This is useful for deploying with secrets from a secret manager instead of typing them into the GUI.
+
+| Variable | Purpose |
+| --- | --- |
+| `SG_SERVER_URL` | ShotGrid server URL or site name |
+| `SG_SCRIPT_NAME` | ShotGrid script user name |
+| `SG_SCRIPT_SECRET` | ShotGrid script key |
+| `SG_INTERVAL_MINUTES` | Refresh interval in minutes |
+| `SG_OUTPUT_DIR` | Directory CSVs are written to (default `/data/csv`) |
+| `SG_EXPORTS_JSON` | JSON array fully replacing the export list, e.g. `[{"name":"tasks","entity_type":"Task","fields":["content","sg_status_list"],"file_name":"tasks.csv"}]` |
+
+Set these in `docker-compose.yml` or with `docker run -e ...`.
+
+### Secrets
+
+The ShotGrid script secret is never stored in plaintext. When saved from the GUI it is encrypted with a key (`/data/secret.key`, generated on first run and kept outside of `config.json`) before being written to `/data/config.json`. Keep the `/data` volume private — anyone with both files can still decrypt the secret, same as anyone with access to a `.env` file could.
+
+If `SG_SCRIPT_SECRET` is set as an environment variable, it is used directly and never written to disk at all.
+
+### Data persistence
+
+`/data` holds `config.json`, `secret.key`, and the `csv/` output directory. Mount it as a volume (the provided `docker-compose.yml` already does) so configuration and history survive container restarts.
+
+## Standalone script
+
+The original, minimal script (`livecsv.py`) is kept for reference — a single file you edit directly and run with cron, no GUI or container required.
+
+### Prerequisites
 
 - Python 3.x
 - `shotgun_api3` library. Install it via pip:
@@ -11,9 +62,9 @@ This script fetches data from ShotGrid/Flow Production Tracking and exports it i
   pip install shotgun-api3
   ```
 
-## Setup
+### Setup
 
-### 1. Configure ShotGrid Credentials
+#### 1. Configure ShotGrid Credentials
 
 Replace the placeholders with your ShotGrid credentials in the script:
 
@@ -23,7 +74,7 @@ SCRIPT_NAME = "{your_script_name}"
 SCRIPT_SECRET = "{your_token_here}"
 ```
 
-### 2. Define Entity Fields
+#### 2. Define Entity Fields
 
 Specify the fields you want to fetch for both Task and Version entities:
 
@@ -32,7 +83,7 @@ task_fields = [{your_task_fields_here}]
 version_fields = [{your_version_fields_here}]
 ```
 
-### 3. CSV Output Path
+#### 3. CSV Output Path
 
 By default, CSV files are written to `/var/www/csv/` to be served via Nginx. You can modify the file paths in the `write_csv` function:
 
@@ -41,17 +92,17 @@ write_csv(tasks_data, '/path/to/your/tasks.csv')
 write_csv(versions_data, '/path/to/your/versions.csv')
 ```
 
-## Usage
+### Usage
 
-### Fetching Data
+#### Fetching Data
 
 The script connects to your ShotGrid instance and retrieves data for all projects under the Task and Version entities. This data is then exported into separate CSV files for each entity.
 
-### Running the Script
+#### Running the Script
 
 The script can be run manually or on a schedule. By default, it fetches data once. To run it periodically, add a number inside the `export_csv()` function and set an interval (in minutes), or set up a crontab schedule (recommended):
 
-## Functions
+### Functions
 
 - **`fetch_data(entity_type, fields)`**: Queries ShotGrid for a specific entity type (e.g., `'Task'`, `'Version'`) and its fields.
   
@@ -59,7 +110,7 @@ The script can be run manually or on a schedule. By default, it fetches data onc
 
 - **`export_csv(interval_minutes)`**: Loops the data-fetching and CSV-writing process at the interval specified (in minutes).
 
-## Automating with Crontab
+### Automating with Crontab
 
 To automate the script using crontab:
 
@@ -75,11 +126,11 @@ To automate the script using crontab:
    */30 * * * * /usr/bin/python3 /{path_to_script}/liveCSV.py
    ```
 
-## Setting Up Nginx for CSV File Access
+### Setting Up Nginx for CSV File Access
 
 The following steps guide you through setting up an HTTP server using Nginx to serve the generated CSV files. It's recommended to configure SSL for secure access.
 
-### 1. Create Folder and Set Permissions
+#### 1. Create Folder and Set Permissions
 
 Create the directory for the CSV files and set appropriate permissions:
 
@@ -89,7 +140,7 @@ $ chmod 755 /var/www/csv/
 $ chown www-data:www-data /var/www/csv/
 ```
 
-### 2. Modify Nginx Configuration
+#### 2. Modify Nginx Configuration
 
 Edit the default Nginx configuration file (usually located at `/etc/nginx/sites-available/default`) and add the following block:
 
@@ -105,7 +156,7 @@ server {
 }
 ```
 
-### 3. Restart Nginx
+#### 3. Restart Nginx
 
 After saving the configuration, restart the Nginx service to apply changes:
 
@@ -113,7 +164,7 @@ After saving the configuration, restart the Nginx service to apply changes:
 $ sudo systemctl restart nginx
 ```
 
-### 4. Accessing the Files
+#### 4. Accessing the Files
 
 Your CSV files will now be accessible via HTTP:
 
